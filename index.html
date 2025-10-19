@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handwriting Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400&family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #141419;
+            --bg-tertiary: #1a1a24;
+            /* Updated accent colors for a new aesthetic */
+            --accent-primary: #6a82fb; /* More blue/purple */
+            --accent-secondary: #fc5c7d; /* Soft red/pink */
+            --accent-tertiary: #4facfe; /* Lighter blue */
+            --text-primary: #e5e7eb;
+            --text-secondary: #9ca3af;
+            --border: rgba(106, 130, 251, 0.2); /* Border based on new accent */
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated gradient background - using new accents */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 50%, rgba(106, 130, 251, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(252, 92, 125, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 20%, rgba(79, 172, 254, 0.06) 0%, transparent 50%);
+            animation: gradientShift 20s ease infinite;
+            pointer-events: none;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(5%, 5%) rotate(120deg); }
+            66% { transform: translate(-5%, 5%) rotate(240deg); }
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Header with glow effect */
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+            animation: fadeInDown 0.8s ease;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            /* Updated gradient for H1 */
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary), var(--accent-tertiary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            letter-spacing: -2px;
+            position: relative;
+            display: inline-block;
+        }
+
+        h1::after {
+            content: '✨';
+            position: absolute;
+            top: -10px;
+            right: -40px;
+            font-size: 2rem;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+        
+        /* Glass morphism panel */
+        .control-panel {
+            background: rgba(26, 26, 36, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            /* Removed position sticky */
+            animation: fadeInLeft 0.8s ease;
+        }
+
+        @keyframes fadeInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .control-group {
+            margin-bottom: 24px;
+            animation: fadeIn 0.8s ease backwards;
+        }
+
+        .control-group:nth-child(1) { animation-delay: 0.1s; }
+        .control-group:nth-child(2) { animation-delay: 0.2s; }
+        .control-group:nth-child(3) { animation-delay: 0.3s; }
+        .control-group:nth-child(4) { animation-delay: 0.4s; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Custom file input */
+        input[type="file"] {
+            width: 100%;
+            padding: 14px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        input[type="file"]:hover {
+            border-color: var(--accent-primary);
+            background: rgba(106, 130, 251, 0.05);
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 140px;
+            padding: 14px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: 'Inter', monospace;
+            resize: vertical;
+            transition: all 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 4px rgba(106, 130, 251, 0.1);
+        }
+        
+        /* Custom range slider with improved visibility */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px; /* Reduced height to make the thumb stand out */
+            background: #444; /* Darker track for contrast */
+            border-radius: 10px;
+            outline: none;
+            border: 1px solid #555; /* Subtle border for the track */
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #ccc; /* White line background */
+            height: 6px;
+            border-radius: 10px;
+            border: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(106, 130, 251, 0.4);
+            transition: transform 0.2s ease;
+            margin-top: -7px; /* Adjust to center the thumb vertically on the 6px track */
+            border: none; /* No outline on the thumb itself */
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        input[type="range"]::-moz-range-track {
+            background: #ccc; /* White line background */
+            height: 6px;
+            border-radius: 10px;
+            border: none;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(106, 130, 251, 0.4);
+            border: none;
+        }
+        
+        .range-value {
+            text-align: center;
+            margin-top: 8px;
+            color: var(--accent-primary);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        
+        /* Color input */
+        input[type="color"] {
+            width: 100%;
+            height: 50px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        input[type="color"]:hover {
+            border-color: var(--accent-primary);
+            transform: scale(1.02);
+        }
+        
+        /* Advanced settings */
+        .advanced-settings {
+            background: rgba(20, 20, 25, 0.6);
+            border: 1px solid rgba(106, 130, 251, 0.15);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+        
+        .advanced-settings h3 {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Custom checkbox */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 14px;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            cursor: pointer;
+            accent-color: var(--accent-primary);
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: color 0.2s ease;
+        }
+
+        .checkbox-group:hover label {
+            color: var(--text-primary);
+        }
+        
+        /* Buttons */
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        
+        button {
+            padding: 14px 20px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid transparent; /* Default transparent border */
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        button span {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .generate-btn {
+            grid-column: 1 / -1;
+            /* Subtler gradient for generate button */
+            background: linear-gradient(135deg, #4b6cb7, #182848); 
+            color: white;
+            box-shadow: 0 8px 24px rgba(75, 108, 183, 0.4);
+        }
+        
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(75, 108, 183, 0.6);
+        }
+
+        .generate-btn:active {
+            transform: translateY(0);
+        }
+        
+        .download-btn {
+            background: #1c3a5e; /* Subtle dark blue */
+            color: #a6c5e8; /* Light blue text for contrast */
+            border-color: #2a5288; /* Slightly lighter border */
+        }
+        
+        .download-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            background: #2a5288; /* Brighter blue on hover */
+            border-color: #3e7ac2;
+            box-shadow: 0 6px 16px rgba(42, 82, 136, 0.3);
+        }
+        
+        .download-btn:disabled {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+            box-shadow: none;
+            border-color: var(--border);
+        }
+        
+        .clear-btn {
+            background: #5c2c3b; /* Subtle dark magenta */
+            color: #e8a6c5; /* Light pink text for contrast */
+            border-color: #882a52; /* Slightly lighter border */
+        }
+        
+        .clear-btn:hover {
+            transform: translateY(-2px);
+            background: #882a52; /* Brighter magenta on hover */
+            border-color: #c23e7a;
+            box-shadow: 0 6px 16px rgba(136, 42, 82, 0.3);
+        }
+        
+        /* Page controls */
+        .page-controls {
+            margin-top: 20px;
+            padding: 16px;
+            background: rgba(20, 20, 25, 0.6);
+            border: 1px solid rgba(106, 130, 251, 0.15); /* Using new accent */
+            border-radius: 12px;
+        }
+
+        .page-controls button {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .page-controls button:hover:not(:disabled) {
+            background: rgba(106, 130, 251, 0.2); /* Using new accent */
+            border-color: var(--accent-primary);
+        }
+
+        .page-controls button:disabled {
+            opacity: 0.3;
+        }
+        
+        /* Preview container */
+        .preview-container {
+            background: rgba(26, 26, 36, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            min-height: 700px;
+            display: flex;
+            flex-direction: column;
+            animation: fadeInRight 0.8s ease;
+            position: sticky; /* Lock preview panel on scroll */
+            top: 20px;
+        }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .preview-container h2 {
+            margin-bottom: 24px;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .canvas-wrapper {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(10, 10, 15, 0.5);
+            border-radius: 16px;
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .canvas-wrapper::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(45deg, 
+                transparent 48%, 
+                rgba(106, 130, 251, 0.03) 50%, /* Using new accent */
+                transparent 52%);
+            background-size: 20px 20px;
+            pointer-events: none;
+        }
+        
+        #canvas {
+            max-width: 100%;
+            height: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6),
+                        0 0 0 1px rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            position: relative;
+            z-index: 1;
+            animation: canvasFadeIn 1s ease;
+        }
+
+        @keyframes canvasFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .preview-container { /* Un-stick on mobile */
+                position: static;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-primary); /* Using new accent */
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-secondary); /* Using new accent */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Cadmus</h1>
+            <p class="subtitle">Clanker Slop</p>
+        </div>
+        
+        <div class="main-grid">
+            <div class="control-panel">
+                <div class="control-group">
+                    <label for="fontFile">📝 Custom Handwriting Font</label>
+                    <input type="file" id="fontFile" accept=".ttf,.otf">
+                </div>
+                
+                <div class="control-group">
+                    <label for="textInput">✍️ Your Text</label>
+                    <textarea id="textInput" placeholder="Type or paste your text here...">sorry bbg</textarea>
+                </div>
+                
+                <div class="control-group">
+                    <label for="fontSize">Font Size: <span id="fontSizeValue" class="range-value">24px</span></label>
+                    <input type="range" id="fontSize" min="16" max="48" value="24">
+                </div>
+
+                <div class="control-group">
+                    <label for="lineHeight">Line Spacing: <span id="lineHeightValue" class="range-value">1.8</span></label>
+                    <input type="range" id="lineHeight" min="1.0" max="3.0" value="1.8" step="0.1">
+                </div>
+                
+                <div class="control-group">
+                    <label for="inkColor">🎨 Ink Color</label>
+                    <input type="color" id="inkColor" value="#1a1a2e">
+                </div>
+
+                <div class="control-group">
+                    <label for="letterSpacing">Letter Spacing: <span id="letterSpacingValue" class="range-value">0px</span></label>
+                    <input type="range" id="letterSpacing" min="-10" max="30" value="0">
+                </div>
+                
+                <div class="advanced-settings">
+                    <h3>📸 Scan Effects</h3>
+                    
+                    <div class="control-group">
+                        <label for="randomness">Randomness: <span id="randomnessValue" class="range-value">50%</span></label>
+                        <input type="range" id="randomness" min="0" max="100" value="50">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="paperNoise">Paper Texture: <span id="paperNoiseValue" class="range-value">30%</span></label>
+                        <input type="range" id="paperNoise" min="0" max="100" value="30">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="shadowIntensity">Shadow: <span id="shadowIntensityValue" class="range-value">40%</span></label>
+                        <input type="range" id="shadowIntensity" min="0" max="100" value="40">
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="vignette" checked>
+                        <label for="vignette">Vignette Effect</label>
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="paperCurl" checked>
+                        <label for="paperCurl">Paper Curl Shadow</label>
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="camScannerWatermark" checked>
+                        <label for="camScannerWatermark">CamScanner Watermark</label>
+                    </div>
+                </div>
+
+                <div class="page-controls">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span style="color: var(--text-secondary);">Page: <strong style="color: var(--accent-primary);"><span id="currentPageNum">1</span> / <span id="totalPages">1</span></strong></span>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="previousPage()" id="prevPageBtn" disabled>◀</button>
+                            <button onclick="nextPage()" id="nextPageBtn" disabled>▶</button>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <button onclick="moveLineUp()" id="moveUpBtn" disabled>Move ↑</button>
+                        <button onclick="moveLineDown()" id="moveDownBtn" disabled>Move ↓</button>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button class="generate-btn" onclick="generateHandwriting()">
+                        <span>✨ Generate</span>
+                    </button>
+                    <button class="download-btn" id="downloadBtn" onclick="downloadImage()" disabled>
+                        <span>💾 Image</span>
+                    </button>
+                    <button class="download-btn" id="downloadPdfBtn" onclick="downloadPDF()" disabled>
+                        <span>📄 PDF</span>
+                    </button>
+                    <button class="clear-btn" onclick="clearCanvas()">
+                        <span>🗑️ Clear</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="preview-container">
+                <h2>Preview</h2>
+                <div class="canvas-wrapper">
+                    <canvas id="canvas" width="816" height="1056"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; padding: 20px 0; font-size: 0.8rem; color: #555;">
+        <p>Mail suggestions to <a href="mailto:srikrishna.chitnispesu@gmail.com" style="color: #777; text-decoration: none;">srikrishna.chitnispesu@gmail.com</a></p>
+        <p>You can make your own fonts at <a href="https://www.calligraphr.com/en/" target="_blank" rel="noopener noreferrer" style="color: #777; text-decoration: none;">https://www.calligraphr.com/en/</a></p>
+    </div>
+    
+    <script>
+        let customFont = null;
+        let pages = [];
+        let currentPage = 0;
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        document.querySelectorAll('input[type="range"]').forEach(input => {
+            input.addEventListener('input', function() {
+                const valueSpan = document.getElementById(this.id + 'Value');
+                if (valueSpan) {
+                    let unit = '';
+                    if (this.id.includes('Size') || this.id === 'letterSpacing') {
+                        unit = 'px';
+                    } else if (this.id !== 'lineHeight') {
+                        unit = '%';
+                    }
+                    valueSpan.textContent = this.value + unit;
+                }
+            });
+        });
+        
+        document.getElementById('fontFile').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const fontData = e.target.result;
+                    const fontName = 'CustomHandwriting';
+                    const fontFace = new FontFace(fontName, fontData);
+                    
+                    try {
+                        await fontFace.load();
+                        document.fonts.add(fontFace);
+                        customFont = fontName;
+                        console.log('Custom font loaded successfully');
+                    } catch (error) {
+                        console.error('Error loading font:', error);
+                        alert('Error loading font. Using fallback font.');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+        
+        function generateHandwriting() {
+            canvas.width = 816;
+            canvas.height = 1056;
+            generateAllPages();
+        }
+        
+        function addPaperTexture(intensity) {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                const noise = (Math.random() - 0.5) * 50 * intensity;
+                data[i] += noise;
+                data[i + 1] += noise;
+                data[i + 2] += noise;
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        function addPaperCurlShadow(intensity) {
+            const rand = () => 0.5 + Math.random();
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            gradient.addColorStop(0, `rgba(0, 0, 0, ${0.1 * intensity * rand()})`);
+            gradient.addColorStop(0.05, `rgba(0, 0, 0, ${0.05 * intensity * rand()})`);
+            gradient.addColorStop(0.1 + Math.random() * 0.1, 'rgba(0, 0, 0, 0)');
+            gradient.addColorStop(0.9 - Math.random() * 0.1, 'rgba(0, 0, 0, 0)');
+            gradient.addColorStop(0.95, `rgba(0, 0, 0, ${0.05 * intensity * rand()})`);
+            gradient.addColorStop(1, `rgba(0, 0, 0, ${0.1 * intensity * rand()})`);
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const gradientV = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradientV.addColorStop(0, `rgba(0, 0, 0, ${0.08 * intensity * rand()})`);
+            gradientV.addColorStop(0.03, `rgba(0, 0, 0, ${0.03 * intensity * rand()})`);
+            gradientV.addColorStop(0.1 + Math.random() * 0.1, 'rgba(0, 0, 0, 0)');
+            gradientV.addColorStop(0.9 - Math.random() * 0.1, 'rgba(0, 0, 0, 0)');
+            gradientV.addColorStop(0.97, `rgba(0, 0, 0, ${0.03 * intensity * rand()})`);
+            gradientV.addColorStop(1, `rgba(0, 0, 0, ${0.08 * intensity * rand()})`);
+            
+            ctx.fillStyle = gradientV;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        function addVignetteEffect() {
+            const centerX = canvas.width / 2 + (Math.random() - 0.5) * 100;
+            const centerY = canvas.height / 2 + (Math.random() - 0.5) * 100;
+            const radius = canvas.width * (0.6 + Math.random() * 0.2);
+
+            const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            gradient.addColorStop(0.5, `rgba(0, 0, 0, ${0.02 + Math.random() * 0.02})`);
+            gradient.addColorStop(0.8, `rgba(0, 0, 0, ${0.1 + Math.random() * 0.05})`);
+            gradient.addColorStop(1, `rgba(0, 0, 0, ${0.25 + Math.random() * 0.1})`);
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        function addScanImperfections(intensity) {
+            const spotCount = Math.floor(5 + Math.random() * 30 * intensity);
+            for (let i = 0; i < spotCount; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const size = Math.random() * 2.5;
+                const opacity = Math.random() * 0.15 * intensity;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
+                ctx.fill();
+            }
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            const grainAmount = 5 + Math.random() * 15;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                const grain = (Math.random() - 0.5) * grainAmount * intensity;
+                data[i] = Math.max(0, Math.min(255, data[i] + grain));
+                data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + grain));
+                data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + grain));
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function addCamScannerWatermark() {
+            const watermarkText = "Scanned with CamScammer";
+            const fontSize = 12;
+            const padding = 20;
+            
+            ctx.save();
+            ctx.font = `${fontSize}px Arial, sans-serif`;
+            ctx.fillStyle = 'rgba(256, 256, 256, 0.6)';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'bottom';
+            
+            const x = padding;
+            const y = canvas.height - padding;
+            
+            ctx.fillText(watermarkText, x, y);
+            ctx.restore();
+        }
+
+        function generateAllPages() {
+            pages = [];
+            currentPage = 0;
+            
+            const text = document.getElementById('textInput').value;
+            const fontSize = parseInt(document.getElementById('fontSize').value);
+            const lineHeight = parseFloat(document.getElementById('lineHeight').value);
+            const lines = text.split('\n');
+            
+            const topMargin = 60;
+            const leftMargin = 50;
+            const rightMargin = canvas.width - 50;
+            const bottomMargin = canvas.height - 60;
+            const maxY = bottomMargin - (fontSize * lineHeight);
+            
+            let currentPageLines = [];
+            let y = topMargin;
+            
+            lines.forEach((line) => {
+                const words = line.split(' ');
+                let currentLine = '';
+                let x = leftMargin;
+                
+                const isMathContent = /[\[\]{}()=+\-*/^√∫∑∏]|matrix|determinant|equation/i.test(line);
+                
+                words.forEach((word) => {
+                    const estimatedWordWidth = word.length * (fontSize * 0.55);
+                    
+                    if (x + estimatedWordWidth > rightMargin && x > leftMargin) {
+                        if (currentLine.trim()) {
+                            currentPageLines.push({
+                                text: currentLine.trim(),
+                                x: leftMargin,
+                                y: y,
+                                isMath: isMathContent
+                            });
+                            y += fontSize * lineHeight;
+                        }
+                        currentLine = word + ' ';
+                        x = leftMargin + estimatedWordWidth + fontSize * 0.5;
+                    } else {
+                        currentLine += word + ' ';
+                        x += estimatedWordWidth + fontSize * 0.5;
+                    }
+                });
+                
+                if (currentLine.trim()) {
+                    currentPageLines.push({
+                        text: currentLine.trim(),
+                        x: leftMargin,
+                        y: y,
+                        isMath: isMathContent
+                    });
+                    y += fontSize * lineHeight;
+                }
+                
+                if (y > maxY) {
+                    if (currentPageLines.length > 0 && currentPageLines[currentPageLines.length - 1].isMath) {
+                        let breakPoint = currentPageLines.length - 1;
+                        for (let i = currentPageLines.length - 2; i >= 0; i--) {
+                            if (!currentPageLines[i].isMath) {
+                                breakPoint = i + 1;
+                                break;
+                            }
+                        }
+                        
+                        const mathContent = currentPageLines.splice(breakPoint);
+                        pages.push([...currentPageLines]);
+                        currentPageLines = mathContent;
+                        
+                        let newY = topMargin;
+                        currentPageLines.forEach(line => {
+                            line.y = newY;
+                            newY += fontSize * lineHeight;
+                        });
+                        y = newY;
+                    } else {
+                        pages.push([...currentPageLines]);
+                        currentPageLines = [];
+                        y = topMargin;
+                    }
+                }
+            });
+            
+            if (currentPageLines.length > 0) {
+                pages.push(currentPageLines);
+            }
+            
+            if (pages.length === 0) {
+                pages.push([]);
+            }
+            
+            updatePageControls();
+            renderCurrentPage();
+        }
+
+        function renderCurrentPage() {
+            ctx.fillStyle = '#fdfdf8';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const paperNoise = parseInt(document.getElementById('paperNoise').value) / 100;
+            if (paperNoise > 0) {
+                addPaperTexture(paperNoise);
+            }
+            
+            const inkColor = document.getElementById('inkColor').value;
+            const fontSize = parseInt(document.getElementById('fontSize').value);
+            const randomness = parseInt(document.getElementById('randomness').value) / 100;
+            const letterSpacing = parseInt(document.getElementById('letterSpacing').value);
+            const fontFamily = customFont || 'Kalam, cursive';
+            
+            if (pages[currentPage]) {
+                pages[currentPage].forEach(lineData => {
+                    let x = lineData.x + (Math.random() - 0.5) * 10;
+                    const words = lineData.text.split(' ');
+                    
+                    words.forEach(word => {
+                        for (let i = 0; i < word.length; i++) {
+                            const char = word[i];
+                            const charSize = fontSize + (Math.random() - 0.5) * fontSize * randomness * 0.3;
+                            const rotation = (Math.random() - 0.5) * randomness * 0.05;
+                            const yOffset = (Math.random() - 0.5) * randomness * 3;
+                            const spacing = charSize * 0.5 + (Math.random() - 0.5) * randomness * 4 + letterSpacing;
+                            
+                            ctx.save();
+                            ctx.translate(x, lineData.y + yOffset);
+                            ctx.rotate(rotation);
+                            
+                            const opacity = 0.7 + Math.random() * 0.3;
+                            ctx.globalAlpha = opacity;
+                            ctx.fillStyle = inkColor;
+                            ctx.font = `${charSize}px ${fontFamily}`;
+                            ctx.fillText(char, 0, 0);
+                            ctx.restore();
+                            
+                            x += spacing;
+                        }
+                        x += fontSize * 0.5;
+                    });
+                });
+            }
+            
+            const shadowIntensity = parseInt(document.getElementById('shadowIntensity').value) / 100;
+            const addVignette = document.getElementById('vignette').checked;
+            const addPaperCurl = document.getElementById('paperCurl').checked;
+            
+            if (addPaperCurl) {
+                addPaperCurlShadow(shadowIntensity);
+            }
+            
+            if (addVignette) {
+                addVignetteEffect();
+            }
+            
+            if (document.getElementById('camScannerWatermark').checked) {
+                addCamScannerWatermark();
+            }
+            
+            addScanImperfections(shadowIntensity);
+        }
+
+        function updatePageControls() {
+            document.getElementById('currentPageNum').textContent = currentPage + 1;
+            document.getElementById('totalPages').textContent = pages.length;
+            document.getElementById('prevPageBtn').disabled = currentPage === 0;
+            document.getElementById('nextPageBtn').disabled = currentPage === pages.length - 1;
+            document.getElementById('moveUpBtn').disabled = currentPage === 0;
+            document.getElementById('moveDownBtn').disabled = currentPage === pages.length - 1;
+            document.getElementById('downloadBtn').disabled = false;
+            document.getElementById('downloadPdfBtn').disabled = pages.length === 0;
+        }
+
+        function nextPage() {
+            if (currentPage < pages.length - 1) {
+                currentPage++;
+                renderCurrentPage();
+                updatePageControls();
+            }
+        }
+
+        function previousPage() {
+            if (currentPage > 0) {
+                currentPage--;
+                renderCurrentPage();
+                updatePageControls();
+            }
+        }
+
+        function moveLineUp() {
+            if (currentPage > 0 && pages[currentPage].length > 0) {
+                const lineToMove = pages[currentPage].shift();
+                const fontSize = parseInt(document.getElementById('fontSize').value);
+                const lineHeight = parseFloat(document.getElementById('lineHeight').value);
+                
+                lineToMove.y = pages[currentPage - 1].length > 0 ?
+                    pages[currentPage - 1][pages[currentPage - 1].length - 1].y + (fontSize * lineHeight) : 60;
+                pages[currentPage - 1].push(lineToMove);
+                
+                let y = 60;
+                pages[currentPage].forEach(line => {
+                    line.y = y;
+                    y += fontSize * lineHeight;
+                });
+                
+                renderCurrentPage();
+                updatePageControls();
+            }
+        }
+
+        function moveLineDown() {
+            if (currentPage < pages.length - 1 && pages[currentPage].length > 0) {
+                const lineToMove = pages[currentPage].pop();
+                pages[currentPage + 1].unshift(lineToMove);
+                
+                const fontSize = parseInt(document.getElementById('fontSize').value);
+                const lineHeight = parseFloat(document.getElementById('lineHeight').value);
+                let y = 60;
+                pages[currentPage + 1].forEach(line => {
+                    line.y = y;
+                    y += fontSize * lineHeight;
+                });
+                
+                renderCurrentPage();
+                updatePageControls();
+            }
+        }
+        
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.download = 'handwritten_document.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        async function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'px',
+                format: [canvas.width, canvas.height]
+            });
+
+            const originalPage = currentPage;
+            
+            for (let i = 0; i < pages.length; i++) {
+                currentPage = i;
+                renderCurrentPage();
+                
+                await new Promise(resolve => setTimeout(resolve, 50));
+
+                const imgData = canvas.toDataURL('image/png');
+                if (i > 0) {
+                    doc.addPage();
+                }
+                doc.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            }
+            
+            doc.save('handwritten_document.pdf');
+
+            currentPage = originalPage;
+            renderCurrentPage();
+            updatePageControls();
+        }
+        
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#fdfdf8';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('downloadBtn').disabled = true;
+            document.getElementById('downloadPdfBtn').disabled = true;
+        }
+        
+        window.addEventListener('load', () => {
+            generateHandwriting();
+        });
+    </script>
+</body>
+</html>
+
+
